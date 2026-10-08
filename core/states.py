@@ -7,5 +7,6 @@ class BotState(Enum):
     COMBAT = auto()
     LOOTING = auto()
     RECOVERING = auto()
+    BLOCKED_UI = auto()
     PAUSED = auto()
     STOPPED = auto()
