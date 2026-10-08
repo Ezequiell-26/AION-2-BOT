@@ -2,9 +2,11 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
+
 from actions.controller import InputController
 from config.settings import Settings
 from core.decision import DecisionEngine
+from core.models import Perception
 from core.states import BotState
 from vision.perception import PerceptionEngine
 
@@ -45,7 +47,7 @@ class FarmingBot:
             self._targeted = False
             self._combat_started_at = 0.0
             if self.settings.enable_auto_potion:
-                # X toggles AION 2's auto-potion. Start with that option OFF
+                # X toggles AION 2's in-game auto-potion. Start with it OFF
                 # in-game so this activation is deterministic.
                 self.input.press(self.settings.auto_potion_key)
         else:
@@ -85,6 +87,7 @@ class FarmingBot:
         s = self.settings
         if state is BotState.TARGETING:
             self.input.target_nearest(s.target_key)
+            self.input.hold(s.movement_forward_key, s.approach_pulse_s)
             self._targeted = True
             self._combat_started_at = time.monotonic()
             return
