@@ -8,12 +8,14 @@ from config.settings import Settings
 from core.decision import DecisionEngine
 from core.states import BotState
 from vision.perception import PerceptionEngine
+from runtime.providers import SimulatedStateProvider, VisualStateProvider
 
 class FarmingBot:
     def __init__(self, settings: Settings, log_path: Path | None = None) -> None:
         self.settings = settings
         self.vision = PerceptionEngine(settings.capture_monitor, settings.game_window_title_contains)
         self.input = InputController(settings.dry_run, settings.game_window_title_contains)
+        self.provider = SimulatedStateProvider() if settings.state_provider == "simulated" else VisualStateProvider(self.vision)
         self.decision = DecisionEngine()
         self.running = True
         self.enabled = False
@@ -42,7 +44,7 @@ class FarmingBot:
     def stop(self) -> None:
         self.running = False
         self.input.stop_movement(self._movement_keys())
-        self.vision.close()
+        self.provider.close()
 
     def _movement_keys(self) -> tuple[str, ...]:
         s = self.settings
@@ -80,19 +82,19 @@ class FarmingBot:
                     time.sleep(0.20)
                     continue
 
-                perception = self.vision.scan()
+                game = self.provider.read()
                 now = time.monotonic()
 
                 if (
                     self.settings.enable_auto_potion
                     and not self._potion_armed
-                    and perception.hud_ready
+                    and game.hud_ready
                 ):
                     self.input.press(self.settings.auto_potion_key)
                     self._potion_armed = True
                     self.logger.info("auto_potion_armed")
 
-                target_hp = perception.target.hp_ratio if perception.target else None
+                target_hp = game.target_hp_ratio
                 if target_hp is not None:
                     self._target_seen_once = True
                     self._target_lost_cycles = 0
@@ -114,18 +116,18 @@ class FarmingBot:
                 needs_approach = (
                     self._targeted
                     and self._target_seen_once
-                    and perception.target_seen
+                    and game.target_seen
                     and now - self._last_damage_at >= self.settings.no_damage_approach_s
                 )
 
                 state = self.decision.next_state(
-                    perception,
+                    game,
                     low_hp_ratio=self.settings.low_hp_ratio,
                     low_mp_ratio=self.settings.low_mp_ratio,
                     resume_hp_ratio=self.settings.resume_hp_ratio,
                     resume_mp_ratio=self.settings.resume_mp_ratio,
                     has_target=self._targeted,
-                    target_seen=perception.target_seen,
+                    target_seen=game.target_seen,
                     target_hp_ratio=target_hp,
                     loot_ready=loot_ready,
                     recovering=last_state is BotState.RECOVERING,
@@ -137,21 +139,21 @@ class FarmingBot:
                     self.logger.info(
                         "state=%s hp=%.3f mp=%.3f target=%s target_hp=%s",
                         state.name,
-                        perception.player.hp_ratio,
-                        perception.player.mp_ratio,
-                        perception.target_seen,
+                        game.hp_ratio,
+                        game.mp_ratio,
+                        game.target_seen,
                         None if target_hp is None else round(target_hp, 3),
                     )
                     last_state = state
-                self._execute(state, perception)
+                self._execute(state, game)
                 self._cycles += 1
                 time.sleep(self.settings.loop_delay_s)
         finally:
             self.input.stop_movement(self._movement_keys())
-            self.vision.close()
+            self.provider.close()
             self.logger.info("stopped cycles=%d kills=%d", self._cycles, self._kills)
 
-    def _execute(self, state: BotState, perception) -> None:
+    def _execute(self, state: BotState, game) -> None:
         s = self.settings
 
         if state is BotState.BLOCKED_UI:
