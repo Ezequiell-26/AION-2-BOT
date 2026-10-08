@@ -4,18 +4,19 @@ cd /d "%~dp0"
 
 where py >nul 2>nul
 if errorlevel 1 (
-  echo Python Launcher not found. Install Python 3.11, 3.12 or 3.13.
+  echo Python Launcher not found. Install Python 3.11, 3.12, 3.13 or 3.14.
   pause
   exit /b 1
 )
 
 if not exist ".venv\Scripts\python.exe" (
   echo Creating virtual environment...
-  py -3.13 -m venv .venv 2>nul
+  py -3.14 -m venv .venv 2>nul
+  if errorlevel 1 py -3.13 -m venv .venv 2>nul
   if errorlevel 1 py -3.12 -m venv .venv 2>nul
   if errorlevel 1 py -3.11 -m venv .venv 2>nul
   if errorlevel 1 (
-    echo Could not create a compatible Python environment.
+    echo Could not create a Python 3.11-3.14 environment.
     pause
     exit /b 1
   )
@@ -31,5 +32,6 @@ if errorlevel 1 (
 )
 
 if not exist "config\config.local.json" copy /y "config\default.json" "config\config.local.json" >nul
+
 python main.py
 pause
