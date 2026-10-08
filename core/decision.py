@@ -1,11 +1,12 @@
 from __future__ import annotations
-from core.models import Perception
+from runtime.state_provider import GameState
 from core.states import BotState
 
 class DecisionEngine:
+    """Policy layer: converts observed game state into the next bot state."""
     def next_state(
         self,
-        p: Perception,
+        state: GameState,
         *,
         low_hp_ratio: float,
         low_mp_ratio: float,
@@ -20,15 +21,15 @@ class DecisionEngine:
         combat_elapsed_s: float,
         combat_timeout_s: float,
     ) -> BotState:
-        if p.blocked_ui or not p.hud_ready:
+        if not state.game_active or state.blocked_ui or not state.hud_ready:
             return BotState.BLOCKED_UI
-        if p.player.dead or p.player.hp_ratio <= 0.02:
+        if state.dead or state.hp_ratio <= 0.02:
             return BotState.RECOVERING
-        if recovering and (p.player.hp_ratio < resume_hp_ratio or p.player.mp_ratio < resume_mp_ratio):
+        if recovering and (state.hp_ratio < resume_hp_ratio or state.mp_ratio < resume_mp_ratio):
             return BotState.RECOVERING
-        if p.player.hp_ratio < low_hp_ratio or p.player.mp_ratio < low_mp_ratio:
+        if state.hp_ratio < low_hp_ratio or state.mp_ratio < low_mp_ratio:
             return BotState.RECOVERING
-        if loot_ready or p.loot_available:
+        if loot_ready or state.loot_available:
             return BotState.LOOTING
         if not has_target:
             return BotState.TARGETING
