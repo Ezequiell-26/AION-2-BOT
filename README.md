@@ -1,75 +1,69 @@
 # AION 2 Farmer
 
-Windows-first automation bot for AION 2 PC mode.
+Windows-first modular automation project for AION 2 PC mode.
+
+## Architecture
+
+The bot is built around a state-provider architecture:
+
+`StateProvider -> GameState -> DecisionEngine -> Actions`
+
+The provider contract exposes game state without coupling decision logic to a particular acquisition method.
+
+### Providers
+
+- `VisualStateProvider`: current calibrated screen/HUD implementation.
+- `SimulatedStateProvider`: deterministic provider for tests and development.
+
+The architecture is intentionally ready for an **authorized** game-state source/API in the future. It does not include memory injection, anti-cheat bypasses, or process tampering.
 
 ## Implemented
 
-- Farming loop: target -> approach -> combat -> loot -> repeat.
-- Live HUD perception calibrated for the current 1360x768 layout.
-- Player HP and MP monitoring.
+- Farming loop: target -> approach -> combat -> loot -> recovery.
+- Player HP/MP monitoring.
 - Selected target HP monitoring.
-- Blocked UI/menu detection.
-- Combat reacts to observed target health instead of relying only on a fixed delay.
-- Confirmed target loss triggers loot.
-- Failed target acquisition retries selection instead of falsely looting.
-- No-damage approach pulses to close distance.
-- Basic attack and skill rotation are scheduled independently so perception is not blocked by an 8-skill burst.
-- Auto-potion activation is delayed until the AION 2 HUD is visible.
-- Recovery stops movement and waits for the game's auto-potion system.
-- Native Windows SendInput for keyboard/mouse.
-- Foreground-window guard for real input.
-- F8 pause/resume and F9 emergency stop.
-- Two small capture regions instead of full-screen analysis for low CPU usage.
-- Dry-run mode, JSON configuration, unit tests, CI, Windows launcher and PyInstaller build.
-
-## Current reliability boundary
-
-The bot has real HUD-based HP/MP/target detection, but it is calibrated to the visible PC HUD geometry and colors. Mob identity, pathfinding, loot confirmation, death/resurrection and inventory-full handling are not yet semantic computer-vision modules.
-
-For a real farm run, use a dedicated farming location where Tab selects hostile mobs and the configured skill bar matches the character class. Keep dry_run=true for the first validation, then switch to false only after checking the configuration.
-
-## Windows setup
-
-1. Install Python 3.11, 3.12, 3.13 or 3.14.
-2. Clone or extract the repository.
-3. Run start_windows.bat.
-4. Keep AION 2 in a dedicated game window.
-5. Start with dry_run=true.
-6. For real input, set dry_run=false.
-
-Before the first real run, make sure AION 2's built-in auto-potion option is OFF so the bot's startup X toggle turns it ON deterministically.
-
-Build the standalone executable with build_windows.bat.
-
-Output: dist/AION2-Farmer.exe
-
-PyInstaller should be run on Windows for a Windows executable.
+- Blocked UI detection.
+- Target-loss confirmation before loot.
+- Retarget fallback when no target is acquired.
+- No-damage approach pulses.
+- Scheduled basic attack and skills.
+- Built-in auto-potion activation.
+- Native Windows SendInput.
+- Foreground-window safety guard.
+- Low-cost regional screen capture.
+- Dry-run mode.
+- JSON configuration.
+- Unit tests and GitHub Actions CI.
+- Windows launcher and PyInstaller build.
 
 ## Configuration
 
-Copy config/default.json to config/config.local.json and edit the local file.
+`config/default.json` contains the default settings.
 
-Useful values:
-- combat_timeout_s: fallback before retargeting.
-- approach_pulse_s: forward movement pulse when no damage is observed.
-- skill_keys: class-specific rotation.
-- skill_interval_s: delay between skill casts.
-- attack_pulse_s: basic-attack interval.
-- loot_pulses: number of F presses after confirmed target loss.
-- no_damage_approach_s: delay before another approach pulse.
-- low_hp_ratio / resume_hp_ratio: recovery thresholds.
-- enable_auto_potion: whether the bot toggles AION 2 auto-potion after HUD detection.
-- game_window_title_contains: input safety guard.
+Important values:
 
-## Validation performed
+- `state_provider`: `visual` or `simulated`.
+- `dry_run`: keep `true` for initial testing.
+- `skill_keys`: class-specific skill rotation.
+- `combat_timeout_s`: fallback before retargeting.
+- `low_hp_ratio` / `resume_hp_ratio`: recovery thresholds.
+- `enable_auto_potion`: use AION 2's built-in auto-potion.
+- `game_window_title_contains`: real-input safety guard.
 
-On the connected Windows 11 machine:
-- Python bytecode compiled successfully.
-- Unit tests: 7 passed.
-- Screen capture verified at 1360x768.
-- The executable built successfully with PyInstaller 6.22.3 and Python 3.14.7.
-- The executable started successfully in dry-run mode and was responsive.
+## Windows
 
-## Important
+Run `start_windows.bat` to prepare the environment.
+
+Build:
+
+`build_windows.bat`
+
+Output:
+
+`dist/AION2-Farmer.exe`
+
+## Validation
+
+The connected Windows 11 environment has been used to validate Python compilation, the state-machine tests, screen capture and Windows executable packaging.
 
 Use automation only where it is permitted by the game's rules.
