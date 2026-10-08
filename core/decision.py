@@ -34,7 +34,7 @@ class DecisionEngine:
             return BotState.TARGETING
         if not target_seen:
             if combat_elapsed_s >= combat_timeout_s:
-                return BotState.LOOTING
+                return BotState.TARGETING
             return BotState.MOVING
         if target_hp_ratio is not None and target_hp_ratio <= 0.03:
             return BotState.LOOTING
