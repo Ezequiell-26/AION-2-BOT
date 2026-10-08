@@ -1,5 +1,6 @@
 {
   "game_window_title_contains": "AION 2",
+  "state_provider": "visual",
   "capture_monitor": 1,
   "dry_run": true,
   "loop_delay_s": 0.15,
