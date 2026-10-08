@@ -1,5 +1,7 @@
 from __future__ import annotations
+import ctypes
 from dataclasses import dataclass
+
 from mss import MSS
 from core.models import Perception, PlayerStatus, Target
 
@@ -19,8 +21,9 @@ class PerceptionEngine:
     MIN_TARGET_RUN = 15
     MIN_HUD_RUN = 25
 
-    def __init__(self, monitor: int = 1) -> None:
+    def __init__(self, monitor: int = 1, game_title_contains: str = "AION 2") -> None:
         self.monitor = monitor
+        self.game_title_contains = game_title_contains.casefold()
         self.last_capture = CaptureInfo(False)
         self._sct = MSS()
 
@@ -29,6 +32,18 @@ class PerceptionEngine:
             self._sct.close()
         except Exception:
             pass
+
+    def game_window_active(self) -> bool:
+        try:
+            user32 = ctypes.windll.user32
+            hwnd = user32.GetForegroundWindow()
+            if not hwnd:
+                return False
+            buf = ctypes.create_unicode_buffer(512)
+            user32.GetWindowTextW(hwnd, buf, len(buf))
+            return self.game_title_contains in buf.value.casefold()
+        except Exception:
+            return False
 
     @staticmethod
     def _longest_run(frame, box: tuple[int, int, int, int], predicate) -> int:
@@ -44,8 +59,7 @@ class PerceptionEngine:
                 r, g, b = rgb[i], rgb[i + 1], rgb[i + 2]
                 if predicate(r, g, b):
                     cur += 1
-                    if cur > best:
-                        best = cur
+                    best = max(best, cur)
                 else:
                     cur = 0
         return best
@@ -59,6 +73,13 @@ class PerceptionEngine:
         return b > 70 and g > 65 and b > r * 1.20 and g > r * 1.10
 
     def scan(self) -> Perception:
+        if not self.game_window_active():
+            return Perception(
+                player=PlayerStatus(),
+                blocked_ui=True,
+                hud_ready=False,
+            )
+
         try:
             frame = self._sct.grab(self._sct.monitors[self.monitor])
             self.last_capture = CaptureInfo(True, frame.width, frame.height)
@@ -80,11 +101,7 @@ class PerceptionEngine:
         )
 
         return Perception(
-            player=PlayerStatus(
-                hp_ratio=hp_ratio,
-                mp_ratio=mp_ratio,
-                in_combat=target_seen,
-            ),
+            player=PlayerStatus(hp_ratio=hp_ratio, mp_ratio=mp_ratio, in_combat=target_seen),
             target=target,
             target_seen=target_seen,
             blocked_ui=not hud_ready,
