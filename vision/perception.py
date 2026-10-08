@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from core.models import Perception, PlayerStatus
+from mss import MSS
 
 @dataclass(slots=True)
 class CaptureInfo:
@@ -21,8 +22,7 @@ class PerceptionEngine:
 
     def capture_screen(self):
         try:
-            from mss import mss
-            with mss() as sct:
+            with MSS() as sct:
                 if self.monitor >= len(sct.monitors):
                     self.monitor = 1
                 monitor = sct.monitors[self.monitor]
