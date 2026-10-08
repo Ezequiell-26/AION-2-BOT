@@ -12,7 +12,7 @@ from vision.perception import PerceptionEngine
 class FarmingBot:
     def __init__(self, settings: Settings, log_path: Path | None = None) -> None:
         self.settings = settings
-        self.vision = PerceptionEngine(settings.capture_monitor)
+        self.vision = PerceptionEngine(settings.capture_monitor, settings.game_window_title_contains)
         self.input = InputController(settings.dry_run, settings.game_window_title_contains)
         self.decision = DecisionEngine()
         self.running = True
