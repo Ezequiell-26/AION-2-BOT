@@ -57,3 +57,10 @@ def test_blocked_ui_never_attacks():
         target_hp_ratio=0.8, loot_ready=False, recovering=False,
         needs_approach=False, combat_elapsed_s=1, combat_timeout_s=20,
     ) is BotState.BLOCKED_UI
+
+def test_missing_target_retargets_after_timeout():
+    assert D.next_state(
+        p(), **KW, has_target=True, target_seen=False,
+        target_hp_ratio=None, loot_ready=False, recovering=False,
+        needs_approach=False, combat_elapsed_s=21, combat_timeout_s=20,
+    ) is BotState.TARGETING
