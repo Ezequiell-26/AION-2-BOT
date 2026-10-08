@@ -22,6 +22,10 @@ class PlayerStatus:
 class Perception:
     player: PlayerStatus
     target: Optional[Target] = None
+    target_seen: bool = False
     loot_available: bool = False
-    unexpected_window: bool = False
-    stuck: bool = False
+    blocked_ui: bool = False
+    hud_ready: bool = False
+    hp_bar_run: int = 0
+    mp_bar_run: int = 0
+    target_bar_run: int = 0
