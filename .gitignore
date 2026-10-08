@@ -7,3 +7,9 @@ dist/
 *.spec
 config/config.local.json
 .pytest_cache/
+calibration*.png
+hud*.png
+player_ui.png
+state_*.png
+now.png
+clean.png
