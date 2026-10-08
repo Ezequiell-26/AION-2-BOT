@@ -12,7 +12,7 @@ class VisualStateProvider:
     def read(self) -> GameState:
         p = self.perception.scan()
         return GameState(
-            game_active=self.perception.game_window_active(),
+            game_active=p.game_active,
             hud_ready=p.hud_ready,
             blocked_ui=p.blocked_ui,
             hp_ratio=p.player.hp_ratio,

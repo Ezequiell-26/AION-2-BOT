@@ -21,6 +21,7 @@ class PlayerStatus:
 @dataclass(slots=True)
 class Perception:
     player: PlayerStatus
+    game_active: bool = False
     target: Optional[Target] = None
     target_seen: bool = False
     loot_available: bool = False

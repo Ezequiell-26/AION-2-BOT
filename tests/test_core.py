@@ -3,6 +3,7 @@ from core.models import Perception, PlayerStatus
 from core.states import BotState
 from runtime.providers import SimulatedStateProvider
 from runtime.state_provider import GameState
+from vision.perception import PerceptionEngine
 
 D = DecisionEngine()
 KW = dict(
@@ -73,3 +74,16 @@ def test_simulated_provider_is_deterministic():
     ])
     assert provider.read().target_hp_ratio == 0.7
     assert provider.read().target_seen is False
+
+
+def test_perception_longest_run_counts_single_pixel_steps():
+    class Frame:
+        width = 10
+        height = 1
+        rgb = bytes([220, 20, 20] * 5 + [20, 20, 20] * 5)
+
+    assert PerceptionEngine._longest_run(Frame(), (0, 0, 10, 1), PerceptionEngine._red) == 5
+
+
+def test_perception_ema_smooths_transient_value():
+    assert round(PerceptionEngine._ema(1.0, 0.0, 0.45), 2) == 0.55

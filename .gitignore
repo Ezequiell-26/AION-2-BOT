@@ -13,3 +13,5 @@ player_ui.png
 state_*.png
 now.png
 clean.png
+.devin/mcp_config.json
+.agents/mcp_config.json
