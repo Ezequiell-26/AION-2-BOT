@@ -6,6 +6,7 @@ from pathlib import Path
 @dataclass(slots=True)
 class Settings:
     game_window_title_contains: str = "AION 2"
+    state_provider: str = "visual"
     capture_monitor: int = 1
     dry_run: bool = True
     loop_delay_s: float = 0.15
@@ -43,6 +44,8 @@ class Settings:
     def __post_init__(self) -> None:
         if self.skill_keys is None:
             self.skill_keys = ["1","2","3","4","5","6","7","8"]
+        if self.state_provider not in {"visual", "simulated"}:
+            self.state_provider = "visual"
 
     @classmethod
     def from_json(cls, path: Path) -> "Settings":
@@ -52,4 +55,4 @@ class Settings:
             return cls()
         raw = json.loads(path.read_text(encoding="utf-8"))
         allowed = {field.name for field in cls.__dataclass_fields__.values()}
-        return cls(**{k:v for k,v in raw.items() if k in allowed})
+        return cls(**{k: v for k, v in raw.items() if k in allowed})
