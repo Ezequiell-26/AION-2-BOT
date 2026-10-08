@@ -12,7 +12,8 @@ class CaptureInfo:
     height: int = 0
 
 class PerceptionEngine:
-    """Low-cost HUD perception calibrated for the current 1360x768 AION 2 layout."""
+    """Low-cost AION 2 HUD perception using only two small screen regions."""
+    REFERENCE_SIZE = (1360, 768)
     PLAYER_HP_REGION = (450, 665, 670, 681)
     PLAYER_MP_REGION = (680, 665, 920, 681)
     TARGET_HP_REGION = (525, 42, 820, 60)
@@ -51,14 +52,14 @@ class PerceptionEngine:
         width = frame.width
         rgb = frame.rgb
         best = 0
-        for y in range(max(0, y0), min(y1, frame.height)):
+        for y in range(max(0, y0), min(y1, frame.height), 2):
             cur = 0
             row = y * width * 3
-            for x in range(max(0, x0), min(x1, width)):
+            for x in range(max(0, x0), min(x1, width), 2):
                 i = row + x * 3
                 r, g, b = rgb[i], rgb[i + 1], rgb[i + 2]
                 if predicate(r, g, b):
-                    cur += 1
+                    cur += 2
                     best = max(best, cur)
                 else:
                     cur = 0
@@ -72,37 +73,64 @@ class PerceptionEngine:
     def _cyan(r: int, g: int, b: int) -> bool:
         return b > 70 and g > 65 and b > r * 1.20 and g > r * 1.10
 
+    def _scaled_box(self, monitor: dict, ref: tuple[int, int, int, int]) -> dict:
+        rw, rh = self.REFERENCE_SIZE
+        sx = monitor["width"] / rw
+        sy = monitor["height"] / rh
+        x0, y0, x1, y1 = ref
+        return {
+            "left": monitor["left"] + int(x0 * sx),
+            "top": monitor["top"] + int(y0 * sy),
+            "width": max(1, int((x1 - x0) * sx)),
+            "height": max(1, int((y1 - y0) * sy)),
+        }
+
     def scan(self) -> Perception:
         if not self.game_window_active():
-            return Perception(
-                player=PlayerStatus(),
-                blocked_ui=True,
-                hud_ready=False,
-            )
+            return Perception(player=PlayerStatus(), blocked_ui=True, hud_ready=False)
 
         try:
-            frame = self._sct.grab(self._sct.monitors[self.monitor])
-            self.last_capture = CaptureInfo(True, frame.width, frame.height)
+            monitor = self._sct.monitors[self.monitor]
+            hp_mp = self._sct.grab(self._scaled_box(
+                monitor,
+                (self.PLAYER_HP_REGION[0], self.PLAYER_HP_REGION[1],
+                 self.PLAYER_MP_REGION[2], self.PLAYER_HP_REGION[3]),
+            ))
+            target = self._sct.grab(self._scaled_box(monitor, self.TARGET_HP_REGION))
+            self.last_capture = CaptureInfo(True, monitor["width"], monitor["height"])
         except Exception:
             self.last_capture = CaptureInfo(False)
             return Perception(player=PlayerStatus(), blocked_ui=True, hud_ready=False)
 
-        hp_run = self._longest_run(frame, self.PLAYER_HP_REGION, self._red)
-        mp_run = self._longest_run(frame, self.PLAYER_MP_REGION, self._cyan)
-        target_run = self._longest_run(frame, self.TARGET_HP_REGION, self._red)
+        # Local coordinates for the bottom HUD capture.
+        hp_w = self.PLAYER_HP_REGION[2] - self.PLAYER_HP_REGION[0]
+        hp_box = (0, 0, self.PLAYER_HP_REGION[2] - self.PLAYER_HP_REGION[0], hp_mp.height)
+        mp_box = (
+            self.PLAYER_MP_REGION[0] - self.PLAYER_HP_REGION[0],
+            0,
+            self.PLAYER_MP_REGION[2] - self.PLAYER_HP_REGION[0],
+            hp_mp.height,
+        )
+        hp_run = self._longest_run(hp_mp, hp_box, self._red)
+        mp_run = self._longest_run(hp_mp, mp_box, self._cyan)
+        target_run = self._longest_run(
+            target,
+            (0, 0, self.TARGET_HP_REGION[2] - self.TARGET_HP_REGION[0], self.TARGET_HP_REGION[3] - self.TARGET_HP_REGION[1]),
+            self._red,
+        )
 
         hud_ready = hp_run >= self.MIN_HUD_RUN and mp_run >= self.MIN_HUD_RUN
         hp_ratio = min(1.0, hp_run / self.PLAYER_BAR_MAX_RUN)
         mp_ratio = min(1.0, mp_run / self.PLAYER_BAR_MAX_RUN)
         target_seen = target_run >= self.MIN_TARGET_RUN
-        target = (
+        target_obj = (
             Target(hp_ratio=min(1.0, target_run / self.TARGET_BAR_MAX_RUN), selected=True)
             if target_seen else None
         )
 
         return Perception(
             player=PlayerStatus(hp_ratio=hp_ratio, mp_ratio=mp_ratio, in_combat=target_seen),
-            target=target,
+            target=target_obj,
             target_seen=target_seen,
             blocked_ui=not hud_ready,
             hud_ready=hud_ready,
