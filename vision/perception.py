@@ -31,7 +31,7 @@ class PerceptionEngine:
             pass
 
     @staticmethod
-    def _longest_red_run(frame, box: tuple[int, int, int, int]) -> int:
+    def _longest_run(frame, box: tuple[int, int, int, int], predicate) -> int:
         x0, y0, x1, y1 = box
         width = frame.width
         rgb = frame.rgb
@@ -42,14 +42,21 @@ class PerceptionEngine:
             for x in range(max(0, x0), min(x1, width)):
                 i = row + x * 3
                 r, g, b = rgb[i], rgb[i + 1], rgb[i + 2]
-                ok = r > 110 and r > g * 1.35 and r > b * 1.20
-                if ok:
+                if predicate(r, g, b):
                     cur += 1
                     if cur > best:
                         best = cur
                 else:
                     cur = 0
         return best
+
+    @staticmethod
+    def _red(r: int, g: int, b: int) -> bool:
+        return r > 110 and r > g * 1.35 and r > b * 1.20
+
+    @staticmethod
+    def _cyan(r: int, g: int, b: int) -> bool:
+        return b > 70 and g > 65 and b > r * 1.20 and g > r * 1.10
 
     def scan(self) -> Perception:
         try:
@@ -59,18 +66,25 @@ class PerceptionEngine:
             self.last_capture = CaptureInfo(False)
             return Perception(player=PlayerStatus(), blocked_ui=True, hud_ready=False)
 
-        hp_run = self._longest_red_run(frame, self.PLAYER_HP_REGION)
-        mp_run = self._longest_red_run(frame, self.PLAYER_MP_REGION)
-        target_run = self._longest_red_run(frame, self.TARGET_HP_REGION)
+        hp_run = self._longest_run(frame, self.PLAYER_HP_REGION, self._red)
+        mp_run = self._longest_run(frame, self.PLAYER_MP_REGION, self._cyan)
+        target_run = self._longest_run(frame, self.TARGET_HP_REGION, self._red)
 
         hud_ready = hp_run >= self.MIN_HUD_RUN and mp_run >= self.MIN_HUD_RUN
         hp_ratio = min(1.0, hp_run / self.PLAYER_BAR_MAX_RUN)
         mp_ratio = min(1.0, mp_run / self.PLAYER_BAR_MAX_RUN)
         target_seen = target_run >= self.MIN_TARGET_RUN
-        target = Target(hp_ratio=min(1.0, target_run / self.TARGET_BAR_MAX_RUN), selected=True) if target_seen else None
+        target = (
+            Target(hp_ratio=min(1.0, target_run / self.TARGET_BAR_MAX_RUN), selected=True)
+            if target_seen else None
+        )
 
         return Perception(
-            player=PlayerStatus(hp_ratio=hp_ratio, mp_ratio=mp_ratio, in_combat=target_seen),
+            player=PlayerStatus(
+                hp_ratio=hp_ratio,
+                mp_ratio=mp_ratio,
+                in_combat=target_seen,
+            ),
             target=target,
             target_seen=target_seen,
             blocked_ui=not hud_ready,
