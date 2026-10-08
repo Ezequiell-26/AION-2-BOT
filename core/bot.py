@@ -28,6 +28,9 @@ class FarmingBot:
         self._patrol_counter = 0
         self._potion_armed = False
         self._last_ui_recovery = 0.0
+        self._next_basic_attack_at = 0.0
+        self._next_skill_at = 0.0
+        self._skill_index = 0
         self.logger = logging.getLogger("aion2-farmer")
         if not self.logger.handlers and log_path:
             log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,6 +61,9 @@ class FarmingBot:
         self._combat_started_at = 0.0
         self._last_damage_at = time.monotonic()
         self._last_target_hp = None
+        self._next_basic_attack_at = 0.0
+        self._next_skill_at = 0.0
+        self._skill_index = 0
 
     def run(self) -> None:
         self.logger.info("started dry_run=%s", self.settings.dry_run)
@@ -172,13 +178,16 @@ class FarmingBot:
             return
 
         if state is BotState.COMBAT:
-            self.input.basic_attack(s.basic_attack_button)
-            if s.rotation_enabled:
-                for key in s.skill_keys or []:
-                    if not self.running or not self.enabled:
-                        break
-                    self.input.press(key)
-                    time.sleep(s.skill_interval_s if not s.dry_run else min(s.skill_interval_s, 0.02))
+            now = time.monotonic()
+            if now >= self._next_basic_attack_at:
+                self.input.basic_attack(s.basic_attack_button)
+                self._next_basic_attack_at = now + max(0.05, s.attack_pulse_s)
+            keys = s.skill_keys or []
+            if s.rotation_enabled and keys and now >= self._next_skill_at:
+                key = keys[self._skill_index % len(keys)]
+                self.input.press(key)
+                self._skill_index = (self._skill_index + 1) % len(keys)
+                self._next_skill_at = now + max(0.05, s.skill_interval_s)
             return
 
         if state is BotState.LOOTING:
@@ -190,6 +199,9 @@ class FarmingBot:
             self._target_lost_cycles = 0
             self._combat_started_at = 0.0
             self._last_target_hp = None
+            self._next_basic_attack_at = 0.0
+            self._next_skill_at = 0.0
+            self._skill_index = 0
             self._kills += 1
             self._patrol_counter += 1
             if s.patrol_enabled and self._patrol_counter >= max(1, s.patrol_side_every):
@@ -205,4 +217,7 @@ class FarmingBot:
             self._target_lost_cycles = 0
             self._combat_started_at = 0.0
             self._last_target_hp = None
+            self._next_basic_attack_at = 0.0
+            self._next_skill_at = 0.0
+            self._skill_index = 0
             return
