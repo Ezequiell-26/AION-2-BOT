@@ -14,7 +14,8 @@ Windows-first automation bot for AION 2 PC mode.
 - Configurable skill rotation through keys 1-8.
 - Auto-potion activation at bot start.
 - Recovery mode stops movement and waits for the in-game potion system instead of repeatedly toggling X.
-- Active-window guard: when real input is enabled, input is only sent while the active window title contains "AION 2".
+- Native Windows `SendInput` for keyboard/mouse actions; no PyAutoGUI/PyGetWindow dependency.
+- Active-window guard: real input is sent only while the foreground window title contains "AION 2".
 - F8 pause/resume and F9 emergency stop.
 - Screen capture layer via mss.
 - Dry-run mode for safe testing.
@@ -24,14 +25,14 @@ Windows-first automation bot for AION 2 PC mode.
 
 ## Important limitation
 
-This repository deliberately does not pretend that arbitrary pixels are enough to reliably identify every mob, HP bar, death screen, loot prompt, or UI state. Those detections need calibration against the user's current AION 2 client resolution/UI.
+This repository deliberately does not pretend that arbitrary pixels are enough to reliably identify every mob, HP bar, death screen, loot prompt, or UI state. Those detections need calibration against the current AION 2 client.
 
-The current farming engine therefore uses AION 2's deterministic PC controls and a configurable combat timeout. In real use, set the combat timeout close to the actual kill time for the chosen farming spot. The next reliability step is a calibrated screen profile that detects target/HP/death/loot state directly.
+The current farming engine therefore uses AION 2's deterministic PC controls and a configurable combat timeout. In real use, set the combat timeout close to the actual kill time for the chosen farming spot. AION 2's built-in auto-potion is used for basic self-healing.
 
 ## Windows setup
 
-1. Install Python 3.11, 3.12 or 3.13.
-2. Extract the repository.
+1. Install Python 3.11, 3.12, 3.13 or 3.14.
+2. Extract/clone the repository.
 3. Run `start_windows.bat`.
 4. Keep AION 2 in a dedicated game window.
 5. Start with `dry_run: true`.
@@ -80,8 +81,6 @@ Useful values:
 - `game_window_title_contains`: input safety guard.
 
 ## Testing
-
-Run:
 
 ```bat
 python -m compileall -q .
