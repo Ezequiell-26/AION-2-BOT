@@ -3,20 +3,57 @@ from core.models import Perception, PlayerStatus
 from core.states import BotState
 
 D = DecisionEngine()
-KW = dict(low_hp_ratio=0.35, low_mp_ratio=0.18)
+KW = dict(
+    low_hp_ratio=0.35,
+    low_mp_ratio=0.18,
+    resume_hp_ratio=0.82,
+    resume_mp_ratio=0.60,
+)
+
+def p(**kwargs):
+    base = dict(hud_ready=True, blocked_ui=False, player=PlayerStatus())
+    base["player"] = PlayerStatus(**kwargs)
+    return Perception(**base)
 
 def test_low_hp_recovers():
-    p = Perception(player=PlayerStatus(hp_ratio=0.2))
-    assert D.next_state(p, **KW, has_target=True, combat_elapsed_s=1, combat_timeout_s=12) is BotState.RECOVERING
+    assert D.next_state(
+        p(hp_ratio=0.20), **KW, has_target=True, target_seen=True,
+        target_hp_ratio=0.8, loot_ready=False, recovering=False,
+        needs_approach=False, combat_elapsed_s=1, combat_timeout_s=20,
+    ) is BotState.RECOVERING
 
 def test_no_target_targets():
-    p = Perception(player=PlayerStatus())
-    assert D.next_state(p, **KW, has_target=False, combat_elapsed_s=0, combat_timeout_s=12) is BotState.TARGETING
+    assert D.next_state(
+        p(), **KW, has_target=False, target_seen=False,
+        target_hp_ratio=None, loot_ready=False, recovering=False,
+        needs_approach=False, combat_elapsed_s=0, combat_timeout_s=20,
+    ) is BotState.TARGETING
 
-def test_combat_state():
-    p = Perception(player=PlayerStatus(in_combat=True))
-    assert D.next_state(p, **KW, has_target=True, combat_elapsed_s=2, combat_timeout_s=12) is BotState.COMBAT
+def test_target_combat():
+    assert D.next_state(
+        p(), **KW, has_target=True, target_seen=True,
+        target_hp_ratio=0.8, loot_ready=False, recovering=False,
+        needs_approach=False, combat_elapsed_s=2, combat_timeout_s=20,
+    ) is BotState.COMBAT
 
-def test_timeout_loots():
-    p = Perception(player=PlayerStatus())
-    assert D.next_state(p, **KW, has_target=True, combat_elapsed_s=12.1, combat_timeout_s=12) is BotState.LOOTING
+def test_no_damage_approaches():
+    assert D.next_state(
+        p(), **KW, has_target=True, target_seen=True,
+        target_hp_ratio=0.9, loot_ready=False, recovering=False,
+        needs_approach=True, combat_elapsed_s=2, combat_timeout_s=20,
+    ) is BotState.MOVING
+
+def test_target_loss_loots():
+    assert D.next_state(
+        p(), **KW, has_target=True, target_seen=False,
+        target_hp_ratio=None, loot_ready=True, recovering=False,
+        needs_approach=False, combat_elapsed_s=4, combat_timeout_s=20,
+    ) is BotState.LOOTING
+
+def test_blocked_ui_never_attacks():
+    blocked = Perception(player=PlayerStatus(), blocked_ui=True, hud_ready=False)
+    assert D.next_state(
+        blocked, **KW, has_target=True, target_seen=True,
+        target_hp_ratio=0.8, loot_ready=False, recovering=False,
+        needs_approach=False, combat_elapsed_s=1, combat_timeout_s=20,
+    ) is BotState.BLOCKED_UI
