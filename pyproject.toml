@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aion2-farmer"
+version = "0.2.0"
+description = "Windows-ready modular AION 2 farming bot"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "mss>=9.0.0,<11",
+  "Pillow>=10.0.0,<13",
+  "PyAutoGUI>=0.9.54,<1",
+  "PyGetWindow>=0.0.9,<1,
+]
+
+[project.scripts]
+aion2-farmer = "main:main"
+
+[tool.setuptools]
+packages = ["actions", "config", "core", "vision"]
