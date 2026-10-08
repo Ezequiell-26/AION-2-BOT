@@ -16,6 +16,7 @@ class DecisionEngine:
         target_hp_ratio: float | None,
         loot_ready: bool,
         recovering: bool,
+        needs_approach: bool,
         combat_elapsed_s: float,
         combat_timeout_s: float,
     ) -> BotState:
@@ -38,5 +39,7 @@ class DecisionEngine:
         if target_hp_ratio is not None and target_hp_ratio <= 0.03:
             return BotState.LOOTING
         if combat_elapsed_s >= combat_timeout_s:
+            return BotState.MOVING
+        if needs_approach:
             return BotState.MOVING
         return BotState.COMBAT
